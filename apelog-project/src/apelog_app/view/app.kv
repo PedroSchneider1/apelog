@@ -1,0 +1,17 @@
+<MainController>:
+    orientation: "vertical"
+    padding: 20
+    spacing: 10
+
+    Label:
+        id: label
+        text: "Exemplo MVC"
+        size_hint_y: None
+        height: "40dp"
+
+    Button:
+        text: "Clique em mim"
+        size_hint: None, None
+        size: "200dp", "50dp"
+        pos_hint: {"center_x": 0.5}
+        on_press: root.on_button_press()
