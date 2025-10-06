@@ -1,17 +1,133 @@
 <MainController>:
+    canvas.before:
+        Color:
+            rgba: 0.1, 0.1, 0.1, 1  # cinza claro (debug)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
     orientation: "vertical"
-    padding: 20
-    spacing: 10
 
-    Label:
-        id: label
-        text: "Exemplo MVC"
+    # CONTEÚDO PRINCIPAL (fica acima da barra)
+    BoxLayout:
+        orientation: "horizontal"
+
+        # LADO ESQUERDO
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_x: 0.3
+
+            canvas.before:
+                Color:
+                    rgba: 1, 0, 0, 1  # vermelho (debug)
+                Line:
+                    width: 1.5
+                    rectangle: self.x, self.y, self.width, self.height
+
+            Label:
+                text: "Lista de Áudios"
+                size_hint_y: None
+                height: "40dp"
+
+            # Lista de áudios
+            RecycleView:
+                id: audio_list_view
+                viewclass: "AudioItem"
+                size_hint_y: 0.5
+
+                canvas.before:
+                    Color:
+                        rgba: 0, 1, 1, 1  # ciano (borda debug)
+                    Line:
+                        width: 1.5
+                        rectangle: self.x, self.y, self.width, self.height
+
+                RecycleBoxLayout:
+                    default_size: None, dp(40)
+                    default_size_hint: 1, None
+                    size_hint_y: None
+                    height: self.minimum_height
+                    orientation: "vertical"
+
+            Widget:
+                size_hint_y: 0.5
+
+        # LADO DIREITO
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_x: 0.7
+
+            canvas.before:
+                Color:
+                    rgba: 1, 1, 0, 1  # amarelo (debug)
+                Line:
+                    width: 1.5
+                    rectangle: self.x, self.y, self.width, self.height
+
+            Image:
+                id: spectrogram
+                source: "placeholder.png"
+
+            Label:
+                text: "Eventos"
+                size_hint_y: None
+                height: "30dp"
+
+            GridLayout:
+                cols: 3
+                size_hint_y: 0.5
+
+                Label:
+                    text: "Time"
+                Label:
+                    text: "Title"
+                Label:
+                    text: "Description"
+
+    # BARRA INFERIOR
+    MDBoxLayout:
+        orientation: "horizontal"
         size_hint_y: None
-        height: "40dp"
+        height: "60dp"
+        md_bg_color: 0.1, 0.1, 0.1, 1
+        padding: [0, 5]
+        spacing: "15dp"
 
-    Button:
-        text: "Clique em mim"
-        size_hint: None, None
-        size: "200dp", "50dp"
-        pos_hint: {"center_x": 0.5}
-        on_press: root.on_button_press()
+        Widget:  # espaço à esquerda
+            size_hint_x: 0.3
+
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_x: None
+            width: self.minimum_width
+            spacing: "15dp"
+
+            MDIconButton:
+                icon: "skip-previous"
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+            MDIconButton:
+                icon: "play"
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+            MDIconButton:
+                icon: "pause"
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+            MDIconButton:
+                icon: "skip-next"
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+            MDIconButton:
+                icon: "plus"
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+
+        Widget:  # espaço à direita
+            size_hint_x: 0.3
+
+
+<AudioItem@Button>:
+    text: root.text
+    on_release:
+        app.root.on_audio_select(self.text)
