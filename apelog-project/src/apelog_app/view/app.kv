@@ -15,34 +15,52 @@
         # LADO ESQUERDO
         BoxLayout:
             orientation: "vertical"
-            size_hint_x: 0.25  # era 0.3 — mais fino
+            size_hint_x: 0.25
             padding: "10dp"
-            spacing: "6dp"
+            spacing: "8dp"
 
             canvas.before:
+                # Fundo translúcido
                 Color:
-                    rgba: 1, 0, 0, 1  # vermelho (debug)
+                    rgba: 0.15, 0.15, 0.18, 0.9  # cinza escuro translúcido
+                RoundedRectangle:
+                    radius: [10, 0, 0, 10]  # cantos arredondados à esquerda
+                    pos: self.pos
+                    size: self.size
+
+                # Borda sutil
+                Color:
+                    rgba: 0.3, 0.3, 0.35, 1
                 Line:
-                    width: 1.5
-                    rectangle: self.x, self.y, self.width, self.height
+                    width: 1.2
+                    rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
+
+                # Sombra leve
+                Color:
+                    rgba: 0, 0, 0, 0.2
+                Rectangle:
+                    pos: (self.right - dp(3), self.y)
+                    size: (dp(3), self.height)
 
             Label:
                 text: "Lista de Áudios"
                 size_hint_y: None
                 height: "40dp"
+                font_size: "18sp"
+                bold: True
+                color: 1, 1, 1, 1
 
-
-            # Lista de áudios
             RecycleView:
                 id: audio_list_view
                 viewclass: "AudioItem"
 
                 canvas.before:
                     Color:
-                        rgba: 0, 1, 1, 1  # ciano (borda debug)
-                    Line:
-                        width: 1.5
-                        rectangle: self.x, self.y, self.width, self.height
+                        rgba: 0.2, 0.2, 0.25, 1  # leve contraste no fundo da lista
+                    RoundedRectangle:
+                        radius: [6, 6, 6, 6]
+                        pos: self.pos
+                        size: self.size
 
                 RecycleBoxLayout:
                     default_size: None, dp(40)
