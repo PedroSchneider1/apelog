@@ -152,6 +152,7 @@
                 icon: "plus"
                 theme_text_color: "Custom"
                 text_color: 1, 1, 1, 1
+                on_release: root.on_add_button_pressed()
 
         Widget:  # espaço à direita
             size_hint_x: 0.3
@@ -159,5 +160,9 @@
 
 <AudioItem@Button>:
     text: root.text
+    halign: "left"
+    theme_text_color: "Custom"
+    text_color: 1, 1, 1, 1
+    md_bg_color: 0.15, 0.15, 0.2, 1
     on_release:
         app.root.on_audio_select(self.text)
