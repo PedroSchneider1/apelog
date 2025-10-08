@@ -106,26 +106,6 @@
                         height: self.minimum_height
                         orientation: "vertical"
 
-                # No lado esquerdo, remova os floating buttons do RelativeLayout e adicione:
-                BoxLayout:
-                    orientation: "horizontal"
-                    size_hint_y: None
-                    height: "60dp"
-                    spacing: "10dp"
-                    padding: "5dp"
-
-                    MDFillRoundFlatButton:
-                        text: "Upload"
-                        icon: "upload"
-                        md_bg_color: 0.3, 0.8, 0.4, 1
-                        on_release: root.on_upload_button_pressed()
-                    
-                    MDFillRoundFlatButton:
-                        text: "Download" 
-                        icon: "download"
-                        md_bg_color: 0.2, 0.6, 1, 1
-                        on_release: root.on_download_button_pressed()
-
         # LADO DIREITO
         BoxLayout:
             orientation: "vertical"
