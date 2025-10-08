@@ -8,6 +8,48 @@
 
     orientation: "vertical"
 
+    # BARRA DE MENUS (nova)
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint_y: None
+        height: "30dp"
+        md_bg_color: 0.12, 0.12, 0.15, 1
+        spacing: 0
+        padding: [0, 0, 0, 0]
+
+        # Menu File
+        MDFlatButton:
+            id: file_menu_button
+            text: "File"
+            on_release: root.open_file_menu()
+            theme_text_color: "Custom"
+            text_color: 1, 1, 1, 1
+            size_hint_x: None
+            width: "60dp"
+
+        # Menu Tools  
+        MDFlatButton:
+            id: tools_menu_button
+            text: "Tools"
+            on_release: root.open_tools_menu()
+            theme_text_color: "Custom"
+            text_color: 1, 1, 1, 1
+            size_hint_x: None
+            width: "60dp"
+
+        # Menu Help
+        MDFlatButton:
+            id: help_menu_button
+            text: "Help"
+            on_release: root.open_help_menu()
+            theme_text_color: "Custom"
+            text_color: 1, 1, 1, 1
+            size_hint_x: None
+            width: "60dp"
+
+        Widget:
+            size_hint_x: 1
+            
     # CONTEÚDO PRINCIPAL (fica acima da barra)
     BoxLayout:
         orientation: "horizontal"
@@ -20,27 +62,18 @@
             spacing: "8dp"
 
             canvas.before:
-                # Fundo translúcido
                 Color:
-                    rgba: 0.15, 0.15, 0.18, 0.9  # cinza escuro translúcido
+                    rgba: 0.15, 0.15, 0.18, 0.9
                 RoundedRectangle:
-                    radius: [10, 0, 0, 10]  # cantos arredondados à esquerda
+                    radius: [10, 0, 0, 10]
                     pos: self.pos
                     size: self.size
 
-                # Borda sutil
                 Color:
                     rgba: 0.3, 0.3, 0.35, 1
                 Line:
                     width: 1.2
                     rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
-
-                # Sombra leve
-                Color:
-                    rgba: 0, 0, 0, 0.2
-                Rectangle:
-                    pos: (self.right - dp(3), self.y)
-                    size: (dp(3), self.height)
 
             Label:
                 text: "Lista de Áudios"
@@ -50,24 +83,48 @@
                 bold: True
                 color: 1, 1, 1, 1
 
-            RecycleView:
-                id: audio_list_view
-                viewclass: "AudioItem"
+            RelativeLayout:
+                RecycleView:
+                    id: audio_list_view
+                    viewclass: "AudioItem"
+                    bar_width: "6dp"
+                    scroll_type: ['bars', 'content']
+                    size_hint: 1, 1
 
-                canvas.before:
-                    Color:
-                        rgba: 0.2, 0.2, 0.25, 1  # leve contraste no fundo da lista
-                    RoundedRectangle:
-                        radius: [6, 6, 6, 6]
-                        pos: self.pos
-                        size: self.size
+                    canvas.before:
+                        Color:
+                            rgba: 0.2, 0.2, 0.25, 1
+                        RoundedRectangle:
+                            radius: [6, 6, 6, 6]
+                            pos: self.pos
+                            size: self.size
 
-                RecycleBoxLayout:
-                    default_size: None, dp(40)
-                    default_size_hint: 1, None
+                    RecycleBoxLayout:
+                        default_size: None, dp(40)
+                        default_size_hint: 1, None
+                        size_hint_y: None
+                        height: self.minimum_height
+                        orientation: "vertical"
+
+                # No lado esquerdo, remova os floating buttons do RelativeLayout e adicione:
+                BoxLayout:
+                    orientation: "horizontal"
                     size_hint_y: None
-                    height: self.minimum_height
-                    orientation: "vertical"
+                    height: "60dp"
+                    spacing: "10dp"
+                    padding: "5dp"
+
+                    MDFillRoundFlatButton:
+                        text: "Upload"
+                        icon: "upload"
+                        md_bg_color: 0.3, 0.8, 0.4, 1
+                        on_release: root.on_upload_button_pressed()
+                    
+                    MDFillRoundFlatButton:
+                        text: "Download" 
+                        icon: "download"
+                        md_bg_color: 0.2, 0.6, 1, 1
+                        on_release: root.on_download_button_pressed()
 
         # LADO DIREITO
         BoxLayout:
@@ -96,7 +153,6 @@
                 # Camada por cima (agulhas/marcadores)
                 FloatLayout:
                     id: marker_layer
-
 
             Label:
                 text: "Eventos"
@@ -136,18 +192,22 @@
                 icon: "play"
                 theme_text_color: "Custom"
                 text_color: 1, 1, 1, 1
+                on_release: root.on_play_button_pressed()
             MDIconButton:
                 icon: "pause"
                 theme_text_color: "Custom"
                 text_color: 1, 1, 1, 1
+                on_release: root.on_pause_button_pressed()
             MDIconButton:
                 icon: "skip-previous"
                 theme_text_color: "Custom"
                 text_color: 1, 1, 1, 1
+                on_release: root.on_previous_button_pressed()
             MDIconButton:
                 icon: "skip-next"
                 theme_text_color: "Custom"
                 text_color: 1, 1, 1, 1
+                on_release: root.on_next_button_pressed()
             MDIconButton:
                 icon: "plus"
                 theme_text_color: "Custom"

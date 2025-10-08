@@ -1,5 +1,7 @@
 from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import ListProperty
+from kivy.metrics import dp
+from kivymd.uix.menu import MDDropdownMenu
 
 from apelog_app.model.data import LoadAudioFiles
 from apelog_app.view.file_chooser import FileChooserPopup
@@ -12,6 +14,9 @@ class MainController(BoxLayout):
         self.loader = LoadAudioFiles()
         self.audio_files = []
         self.dialog = None
+        self.file_menu = None
+        self.tools_menu = None
+        self.help_menu = None
         self.bind(audio_files=self.update_audio_list)
 
     # ---------------------------
@@ -22,13 +27,117 @@ class MainController(BoxLayout):
         """Chamado após o carregamento do .kv"""
         self.update_audio_list()
 
-    def on_add_button_pressed(self):
-        """Chamado quando o usuário clica em '+'"""
+    def on_upload_button_pressed(self):
+        """Chamado quando o usuário clica em 'upload'"""
         self.open_directory_selector()
 
     def on_audio_select(self, filename):
         """Chamado quando o usuário clica num item da lista"""
         print(f"🎵 Áudio selecionado: {filename}")
+
+    # ---------------------------
+    # MENU METHODS
+    # ---------------------------
+
+    def open_file_menu(self):
+        """Abre o menu File"""
+        menu_items = [
+            {
+                "viewclass": "OneLineIconListItem",
+                "icon": "upload",
+                "text": "Upload Audio",
+                "on_release": lambda x="upload": self.on_menu_item_selected(x),
+            },
+            {
+                "viewclass": "OneLineIconListItem", 
+                "icon": "download",
+                "text": "Download Audio",
+                "on_release": lambda x="download": self.on_menu_item_selected(x),
+            },
+        ]
+        
+        self.file_menu = MDDropdownMenu(
+            caller=self.ids.file_menu_button,
+            items=menu_items,
+            width_mult=4,
+        )
+        self.file_menu.open()
+    
+    def open_tools_menu(self):
+        """Abre o menu Tools"""
+        menu_items = [
+            {
+                "viewclass": "OneLineIconListItem",
+                "icon": "chart-bar",
+                "text": "Audio Analysis",
+                "on_release": lambda x="analysis": self.on_menu_item_selected(x),
+            },
+            {
+                "viewclass": "OneLineIconListItem",
+                "icon": "playlist-check", 
+                "text": "Batch Processing",
+                "on_release": lambda x="batch": self.on_menu_item_selected(x),
+            },
+        ]
+        
+        self.tools_menu = MDDropdownMenu(
+            caller=self.ids.tools_menu_button,
+            items=menu_items,
+            width_mult=4,
+        )
+        self.tools_menu.open()
+    
+    def open_help_menu(self):
+        """Abre o menu Help"""
+        menu_items = [
+            {
+                "viewclass": "OneLineIconListItem",
+                "icon": "help-circle",
+                "text": "Documentation", 
+                "on_release": lambda x="docs": self.on_menu_item_selected(x),
+            },
+            {
+                "viewclass": "OneLineIconListItem",
+                "icon": "information",
+                "text": "About",
+                "on_release": lambda x="about": self.on_menu_item_selected(x),
+            },
+        ]
+        
+        self.help_menu = MDDropdownMenu(
+            caller=self.ids.help_menu_button,
+            items=menu_items,
+            width_mult=4,
+        )
+        self.help_menu.open()
+    
+    def on_menu_item_selected(self, action):
+        """Processa a seleção de itens do menu"""
+        # Fecha todos os menus
+        if self.file_menu:
+            self.file_menu.dismiss()
+        if self.tools_menu:
+            self.tools_menu.dismiss() 
+        if self.help_menu:
+            self.help_menu.dismiss()
+        
+        # Executa a ação
+        if action == "upload":
+            self.open_directory_selector()
+        elif action == "download":
+            self.on_download_button_pressed()
+        elif action == "analysis":
+            print("Audio analysis functionality")
+        elif action == "batch":
+            print("Batch processing functionality")
+        elif action == "docs":
+            print("Open documentation")
+        elif action == "about":
+            print("Show about dialog")
+
+    def on_download_button_pressed(self):
+        """Chamado quando o usuário clica em 'download'"""
+        print("Download functionality - implementar")
 
     # ---------------------------
     # LÓGICA DE CONTROLE
