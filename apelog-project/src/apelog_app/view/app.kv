@@ -123,14 +123,15 @@
                 id: spectrogram_container
                 size_hint_y: 0.5
 
-                # Imagem do espectrograma
+                # opcional: imagem de fundo antes de carregar espectrograma
                 Image:
                     id: spectrogram
                     source: "placeholder.png"
                     allow_stretch: True
                     keep_ratio: False
+                    opacity: 0.2
 
-                # Camada por cima (agulhas/marcadores)
+                # camada de marcadores
                 FloatLayout:
                     id: marker_layer
 

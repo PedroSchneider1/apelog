@@ -13,7 +13,7 @@ class FileChooserPopup(ModalView):
         box = BoxLayout(orientation="vertical", spacing=10, padding=10)
 
         self.chooser = FileChooserIconView(
-            path=str(Path.home()),
+            path=str(Path.cwd()),
             filters=["*.mp3", "*.wav", "*.flac", "*.ogg"],
             size_hint=(1, 1),
             multiselect=True
@@ -32,3 +32,4 @@ class FileChooserPopup(ModalView):
         box.add_widget(self.chooser)
         box.add_widget(buttons)
         self.add_widget(box)
+

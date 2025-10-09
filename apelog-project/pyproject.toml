@@ -13,7 +13,10 @@ dependencies = [
     "numpy (>=2.3.3,<3.0.0)",
     "librosa (>=0.11.0,<0.12.0)",
     "pathlib (>=1.0.1,<2.0.0)",
-    "kivymd (>=1.2.0,<2.0.0)"
+    "kivymd (>=1.2.0,<2.0.0)",
+    "matplotlib (>=3.10.7,<4.0.0)",
+    "kivy-garden-matplotlib (>=0.1.1.dev0,<0.2.0)",
+    "kivy-garden (>=0.1.5,<0.2.0)",
 ]
 
 [tool.poetry]
@@ -22,6 +25,9 @@ packages = [{include = "apelog_app", from = "src"}]
 [tool.poetry.scripts]
 app = "apelog_app.main:main"
 
+
+[tool.poetry.group.dev.dependencies]
+setuptools = "^80.9.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

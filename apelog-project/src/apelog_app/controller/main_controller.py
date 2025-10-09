@@ -1,19 +1,20 @@
 from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import ListProperty
-from kivy.metrics import dp
 from kivymd.uix.menu import MDDropdownMenu
 
 from apelog_app.model.data import LoadAudioFiles
 from apelog_app.view.file_chooser import FileChooserPopup
+
+import os
 
 class MainController(BoxLayout):
     audio_files = ListProperty([])
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.dialog = None
         self.loader = LoadAudioFiles()
         self.audio_files = []
-        self.dialog = None
         self.file_menu = None
         self.tools_menu = None
         self.help_menu = None
@@ -33,7 +34,22 @@ class MainController(BoxLayout):
 
     def on_audio_select(self, filename):
         """Chamado quando o usuário clica num item da lista"""
-        print(f"🎵 Áudio selecionado: {filename}")
+        print(f"Selecionado: {filename}")
+
+        if not filename:
+            print("Arquivo não encontrado.")
+            return
+
+        # Gera o espectrograma via model
+        spectrogram_widget = self.loader.generate_waveform(filename)
+        if not spectrogram_widget:
+            print("Falha ao gerar espectrograma.")
+            return
+
+        # Atualiza o container na view
+        container = self.ids.spectrogram_container
+        container.clear_widgets()
+        container.add_widget(spectrogram_widget)
 
     # ---------------------------
     # MENU METHODS
@@ -135,13 +151,13 @@ class MainController(BoxLayout):
         elif action == "about":
             print("Show about dialog")
 
-    def on_download_button_pressed(self):
-        """Chamado quando o usuário clica em 'download'"""
-        print("Download functionality - implementar")
-
     # ---------------------------
     # LÓGICA DE CONTROLE
     # ---------------------------
+
+    def on_download_button_pressed(self):
+        """Chamado quando o usuário clica em 'download'"""
+        print("Download functionality - implementar")
 
     def open_directory_selector(self):
         """Abre o seletor de diretório (view auxiliar)"""
@@ -151,7 +167,7 @@ class MainController(BoxLayout):
     def _load_from_directory(self, directory_path):
         """Carrega áudios via loader e atualiza a view"""
         loaded_files = self.loader._load_from_directory(directory_path, audio_files=self.audio_files)
-        self.audio_files = loaded_files if loaded_files else ["Erro ao carregar arquivos"]
+        self.audio_files = loaded_files
 
     # ---------------------------
     # VIEW UPDATE
