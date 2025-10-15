@@ -2,19 +2,19 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import ListProperty
 from kivymd.uix.menu import MDDropdownMenu
 
-from apelog_app.model.data import LoadAudioFiles
-from apelog_app.view.file_chooser import FileChooserPopup
-
-import os
+import apelog_app.model.data as model
+from apelog_app.view.file_chooser import browse_files
 
 class MainController(BoxLayout):
+    """Controlador principal que faz a ponte entre Model e View."""
     audio_files = ListProperty([])
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.dialog = None
-        self.loader = LoadAudioFiles()
+        self.audio_controller = model.AudioFilesController()
         self.audio_files = []
+        self.audio_selected = None
         self.file_menu = None
         self.tools_menu = None
         self.help_menu = None
@@ -27,29 +27,6 @@ class MainController(BoxLayout):
     def on_kv_post(self, base_widget):
         """Chamado após o carregamento do .kv"""
         self.update_audio_list()
-
-    def on_upload_button_pressed(self):
-        """Chamado quando o usuário clica em 'upload'"""
-        self.open_directory_selector()
-
-    def on_audio_select(self, filename):
-        """Chamado quando o usuário clica num item da lista"""
-        print(f"Selecionado: {filename}")
-
-        if not filename:
-            print("Arquivo não encontrado.")
-            return
-
-        # Gera o espectrograma via model
-        spectrogram_widget = self.loader.generate_waveform(filename)
-        if not spectrogram_widget:
-            print("Falha ao gerar espectrograma.")
-            return
-
-        # Atualiza o container na view
-        container = self.ids.spectrogram_container
-        container.clear_widgets()
-        container.add_widget(spectrogram_widget)
 
     # ---------------------------
     # MENU METHODS
@@ -152,6 +129,63 @@ class MainController(BoxLayout):
             print("Show about dialog")
 
     # ---------------------------
+    # UPLOAD / SELECT AUDIO
+    # ---------------------------
+
+    def on_upload_button_pressed(self):
+        """Chamado quando o usuário clica em 'upload'"""
+        self.open_directory_selector()
+
+    def on_audio_select(self, filename):
+        """Chamado quando o usuário clica num item da lista"""
+        print(f"Selecionado: {filename}")
+        self.audio_selected = filename
+
+        if not filename:
+            print("Arquivo não encontrado.")
+            return
+
+        # Gera o espectrograma via model
+        canvas = self.audio_controller.generate_waveform(filename)
+        if not canvas:
+            print("Falha ao gerar canvas.")
+            return
+
+        # Atualiza o container na view
+        container = self.ids.spectrogram_container
+        container.clear_widgets()
+        container.add_widget(canvas)
+
+    # ---------------------------
+    # MEDIA BUTTONS
+    # ---------------------------
+
+    def on_play_button_pressed(self):
+        """Chamado quando o usuário clica em 'play'"""
+        try:
+            if not self.audio_selected:
+                print("Nenhum áudio selecionado.")
+                return
+            if self.ids.play_btn.icon == "play":
+                self.audio_controller.play(self.audio_selected)
+                self.ids.play_btn.icon = "pause"
+            else:
+                self.audio_controller.pause()
+                self.ids.play_btn.icon = "play"
+        except Exception as e:
+            print(f"Erro ao reproduzir áudio: {e}")
+            self.ids.play_btn.icon = "play"
+            return
+        
+    def on_previous_button_pressed(self):
+        """Chamado quando o usuário clica em 'previous'"""
+        print("Previous button pressed - implementar")
+    
+    def on_next_button_pressed(self):
+        """Chamado quando o usuário clica em 'next'"""
+        print("Next button pressed - implementar")
+
+    # ---------------------------
     # LÓGICA DE CONTROLE
     # ---------------------------
 
@@ -161,12 +195,11 @@ class MainController(BoxLayout):
 
     def open_directory_selector(self):
         """Abre o seletor de diretório (view auxiliar)"""
-        popup = FileChooserPopup(controller_callback=self._load_from_directory)
-        popup.open()
+        browse_files(self._load_from_directory)
 
-    def _load_from_directory(self, directory_path):
-        """Carrega áudios via loader e atualiza a view"""
-        loaded_files = self.loader._load_from_directory(directory_path, audio_files=self.audio_files)
+    def _load_from_directory(self, filenames):
+        """Carrega áudios via audio_controller e atualiza a view"""
+        loaded_files = self.audio_controller._audio_loader(filenames, audio_files=self.audio_files)
         self.audio_files = loaded_files
 
     # ---------------------------
@@ -176,4 +209,4 @@ class MainController(BoxLayout):
     def update_audio_list(self, *args):
         rv = self.ids.get("audio_list_view")
         if rv:
-            rv.data = [{"text": name} for name in self.audio_files]
+            rv.data = [{"text": f} for f in self.audio_files]

@@ -123,14 +123,6 @@
                 id: spectrogram_container
                 size_hint_y: 0.5
 
-                # opcional: imagem de fundo antes de carregar espectrograma
-                Image:
-                    id: spectrogram
-                    source: "placeholder.png"
-                    allow_stretch: True
-                    keep_ratio: False
-                    opacity: 0.2
-
                 # camada de marcadores
                 FloatLayout:
                     id: marker_layer
@@ -170,30 +162,21 @@
             spacing: "15dp"
 
             MDIconButton:
-                icon: "play"
-                theme_text_color: "Custom"
-                text_color: 1, 1, 1, 1
-                on_release: root.on_play_button_pressed()
-            MDIconButton:
-                icon: "pause"
-                theme_text_color: "Custom"
-                text_color: 1, 1, 1, 1
-                on_release: root.on_pause_button_pressed()
-            MDIconButton:
                 icon: "skip-previous"
                 theme_text_color: "Custom"
                 text_color: 1, 1, 1, 1
                 on_release: root.on_previous_button_pressed()
             MDIconButton:
+                id: play_btn
+                icon: "play"
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+                on_release: root.on_play_button_pressed()
+            MDIconButton:
                 icon: "skip-next"
                 theme_text_color: "Custom"
                 text_color: 1, 1, 1, 1
                 on_release: root.on_next_button_pressed()
-            MDIconButton:
-                icon: "plus"
-                theme_text_color: "Custom"
-                text_color: 1, 1, 1, 1
-                on_release: root.on_add_button_pressed()
 
         Widget:  # espaço à direita
             size_hint_x: 0.3
