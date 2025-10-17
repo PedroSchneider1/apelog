@@ -1,6 +1,12 @@
 from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import ListProperty
 from kivymd.uix.menu import MDDropdownMenu
+from kivy_matplotlib_widget.uix.graph_widget import MatplotFigure
+from kivy_matplotlib_widget.uix.hover_widget import add_hover
+from matplotlib.ticker import FormatStrFormatter
+from matplotlib.patches import Rectangle
+from matplotlib.text import Annotation
+import numpy as np
 
 import apelog_app.model.data as model
 from apelog_app.view.file_chooser import browse_files
@@ -12,12 +18,13 @@ class MainController(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.dialog = None
-        self.audio_controller = model.AudioFilesController()
+        self.audio_controller = model.AudioFilesModel()
         self.audio_files = []
         self.audio_selected = None
         self.file_menu = None
         self.tools_menu = None
         self.help_menu = None
+        self.touch_mode = 'cursor'  # 'pan' ou 'cursor'
         self.bind(audio_files=self.update_audio_list)
 
     # ---------------------------
@@ -55,6 +62,10 @@ class MainController(BoxLayout):
             width_mult=4,
         )
         self.file_menu.open()
+
+    def on_download_button_pressed(self):
+        """Chamado quando o usuário clica em 'download'"""
+        print("Download functionality - implementar")
     
     def open_tools_menu(self):
         """Abre o menu Tools"""
@@ -138,6 +149,8 @@ class MainController(BoxLayout):
 
     def on_audio_select(self, filename):
         """Chamado quando o usuário clica num item da lista"""
+        if filename == self.audio_selected:
+            return
         print(f"Selecionado: {filename}")
         self.audio_selected = filename
 
@@ -145,16 +158,152 @@ class MainController(BoxLayout):
             print("Arquivo não encontrado.")
             return
 
-        # Gera o espectrograma via model
-        canvas = self.audio_controller.generate_waveform(filename)
-        if not canvas:
-            print("Falha ao gerar canvas.")
-            return
+        # Gera a figura do waveform
+        fig = self.audio_controller.generate_waveform(filename)
 
-        # Atualiza o container na view
-        container = self.ids.spectrogram_container
+        # Cria o widget Matplotlib
+        figure_widget = MatplotFigure()
+        figure_widget.figure = fig
+        figure_widget.fast_draw = True
+
+        # Atualiza o container da view
+        container = self.ids.waveform_container
         container.clear_widgets()
-        container.add_widget(canvas)
+        container.add_widget(figure_widget)
+
+        ax = fig.axes[0]
+        figure_widget.register_lines(list(ax.get_lines()))
+
+        # --- CONFIGURAÇÕES INICIAIS ---
+        figure_widget.waveform_data = None
+        figure_widget.selected_marker = None
+        figure_widget.selected_annotation = None
+        figure_widget._dragging_bar = False
+
+        # Captura dados do waveform principal
+        lines = ax.get_lines()
+        waveform_lines = [line for line in lines if line.get_color() == '#ca8c18']
+        if waveform_lines:
+            line = waveform_lines[0]
+            figure_widget.waveform_data = {
+                'xdata': line.get_xdata(),
+                'ydata': line.get_ydata(),
+                'xlim': ax.get_xlim(),
+                'ylim': ax.get_ylim()
+            }
+
+        # --- BARRA DE POSIÇÃO (tipo DAW) ---
+        # Cria a barra vertical inicial no tempo 0
+        figure_widget.position_value = 0.0
+        figure_widget.position_line = ax.axvline(
+            x=0.0,
+            color='#d42912',
+            linewidth=2.0,
+            zorder=10
+        )
+
+        # Cria anotação (texto) que mostra o tempo
+        figure_widget.position_annotation = ax.annotate(
+            "0.000 s",
+            xy=(0.0, 1.02),  # um pouco acima do gráfico
+            xycoords=('data', 'axes fraction'),
+            ha='center',
+            va='bottom',
+            fontsize=9,
+            color='white',
+            bbox=dict(boxstyle='round,pad=0.3', fc='#ca8c18', ec='white', alpha=0.9)
+        )
+
+        # --- FUNÇÃO AUXILIAR PARA MOVER A BARRA ---
+        def update_bar_position(instance, touch):
+            """Atualiza posição da barra conforme toque/arraste"""
+            if not instance.waveform_data:
+                return
+
+            xlim = instance.waveform_data['xlim']
+
+            # Calcula posição relativa do toque dentro do gráfico
+            rel_x = (touch.x - instance.x) / instance.width
+            x_data = np.clip(xlim[0] + rel_x * (xlim[1] - xlim[0]), xlim[0], xlim[1])
+
+            # Atualiza posição da linha
+            instance.position_line.set_xdata([x_data, x_data])
+            instance.position_value = x_data
+
+            # Atualiza anotação de tempo
+            if hasattr(instance, 'position_annotation'):
+                instance.position_annotation.set_position((x_data, 1.02))
+                instance.position_annotation.set_text(f"{x_data:.3f} s")
+
+            try:
+                instance.figure.canvas.draw_idle()
+            except:
+                instance.figure.canvas.draw()
+            instance._draw_bitmap()
+
+        # --- EVENTOS DE TOQUE / ARRASTE ---
+        def on_touch_down(instance, touch):
+            if not instance.collide_point(*touch.pos):
+                return False
+            if instance.touch_mode != 'cursor':
+                return False
+
+            instance._dragging_bar = True
+            update_bar_position(instance, touch)
+            return True
+
+        def on_touch_move(instance, touch):
+            if getattr(instance, '_dragging_bar', False):
+                update_bar_position(instance, touch)
+                return True
+            return False
+
+        def on_touch_up(instance, touch):
+            instance._dragging_bar = False
+            return True
+
+        # Faz o bind dos eventos
+        figure_widget.bind(
+            on_touch_down=on_touch_down,
+            on_touch_move=on_touch_move,
+            on_touch_up=on_touch_up
+        )
+
+        figure_widget.touch_mode = self.touch_mode
+
+
+
+    def change_touch_mode(self, mode):
+        """Muda o modo de interação do gráfico"""
+        print(f"Changing touch mode to: {mode}")
+        self.touch_mode = mode
+        
+        # Atualiza o widget do gráfico, se já existir
+        figure_widget = self.ids.waveform_container.children[0] if self.ids.waveform_container.children else None
+        if figure_widget:
+            figure_widget.touch_mode = mode
+            
+            # Limpa seleções se mudar para 'pan'
+            if mode == 'pan':
+                if hasattr(figure_widget, 'selected_marker') and figure_widget.selected_marker:
+                    figure_widget.selected_marker.remove()
+                    figure_widget.selected_marker = None
+                if hasattr(figure_widget, 'selected_annotation') and figure_widget.selected_annotation:
+                    figure_widget.selected_annotation.remove()
+                    figure_widget.selected_annotation = None
+                try:
+                    figure_widget.figure.canvas.draw_idle()
+                except:
+                    figure_widget.figure.canvas.draw()
+                figure_widget._draw_bitmap()
+        
+        # Atualiza o estilo dos botões
+        if self.touch_mode == 'cursor':
+            self.ids.mode_cursor.text_color = (0.118, 0.314, 0.784, 1)
+            self.ids.mode_pan.text_color = (1, 1, 1, 1)
+        elif self.touch_mode == 'pan':
+            self.ids.mode_pan.text_color = (0.118, 0.314, 0.784, 1)
+            self.ids.mode_cursor.text_color = (1, 1, 1, 1)
 
     # ---------------------------
     # MEDIA BUTTONS
@@ -186,12 +335,8 @@ class MainController(BoxLayout):
         print("Next button pressed - implementar")
 
     # ---------------------------
-    # LÓGICA DE CONTROLE
+    # DIRECTORY SELECTOR
     # ---------------------------
-
-    def on_download_button_pressed(self):
-        """Chamado quando o usuário clica em 'download'"""
-        print("Download functionality - implementar")
 
     def open_directory_selector(self):
         """Abre o seletor de diretório (view auxiliar)"""

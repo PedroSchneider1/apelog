@@ -7,7 +7,7 @@ from apelog_app.controller.main_controller import MainController
 
 class MyApp(MDApp):
     def build(self):
-        window_icon = Path(__file__).parent.parent / "assets" / "apelog-logo.png"
+        window_icon = Path(__file__).parent.parent / "assets" / "apelog-logo2.1.png"
         kv_path = Path(__file__).parent / "view" / "app.kv"
         
         setproctitle.setproctitle("Apelog") # Muda o nome do processo no sistema

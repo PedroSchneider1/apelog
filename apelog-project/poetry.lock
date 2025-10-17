@@ -683,6 +683,21 @@ ci = ["coveralls", "pycodestyle"]
 dev = ["pytest (>=3.6)", "pytest-asyncio", "pytest-cov", "sphinx_rtd_theme"]
 
 [[package]]
+name = "kivy-matplotlib-widget"
+version = "0.15.0"
+description = "A Matplotlib interactive widget for kivy"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "kivy_matplotlib_widget-0.15.0.tar.gz", hash = "sha256:882c14c25b36fa921fbb6d83e54c7498d5a89d38c59b1f3f2535f2488ecf5cf9"},
+]
+
+[package.dependencies]
+kivy = ">=2.0.0"
+matplotlib = ">=3.5.2"
+
+[[package]]
 name = "kivymd"
 version = "1.2.0"
 description = "Set of widgets for Kivy inspired by Google's Material Design"
@@ -1983,4 +1998,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12"
-content-hash = "0a760f60cce3ba9614a4ca728059efbd4ec8008ec44dc7e8d48d1eb2c0eb71e3"
+content-hash = "cdf42c30095489c13c5511c6d20f88c3c682a792506359e9270e7620ebd25432"

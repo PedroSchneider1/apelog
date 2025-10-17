@@ -118,9 +118,30 @@
                     width: 1.5
                     rectangle: self.x, self.y, self.width, self.height
 
-            # CONTAINER DO ESPECTROGRAMA
+            # CONTAINER DO WAVEFORM
+            BoxLayout:
+                orientation: "horizontal"
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: "10dp"
+                padding: [0, 5, 0, 5]
+
+                MDIconButton:
+                    id: mode_pan
+                    icon: "cursor-move"
+                    theme_text_color: "Custom"
+                    text_color: 1, 1, 1, 1
+                    on_release: root.change_touch_mode('pan')
+
+                MDIconButton:
+                    id: mode_cursor
+                    icon: "cursor-text"
+                    theme_text_color: "Custom"
+                    text_color: 0.118, 0.314, 0.784, 1
+                    on_release: root.change_touch_mode('cursor')
+
             RelativeLayout:
-                id: spectrogram_container
+                id: waveform_container
                 size_hint_y: 0.5
 
                 # camada de marcadores
@@ -180,6 +201,7 @@
 
         Widget:  # espaço à direita
             size_hint_x: 0.3
+            
 
 
 <AudioItem@Button>:
