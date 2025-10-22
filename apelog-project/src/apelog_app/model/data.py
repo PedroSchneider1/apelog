@@ -5,6 +5,8 @@
 import os
 
 import numpy as np
+import time
+import threading
 import librosa
 import sounddevice as sd
 
@@ -65,39 +67,86 @@ class AudioFilesModel(MediaModel):
     def __init__(self):
         super().__init__()
         self.is_playing = False
+        self.is_paused = False
+        self.play_start_time = 0.0
         self.current_time = 0.0
+        self.start_sample = 0
+        self.thread = None
         self.audio_extensions = (".mp3", ".wav", ".flac", ".ogg")
         self.fig = None
         self.ax = None
+
+    def _playback_loop(self):
+        """Thread interna para reprodução assíncrona."""
+        self.start_sample = int(self.current_time * self.sr)
+        self.play_start_time = time.time()  # tracking para o pause
+
+        sd.play(self.y[self.start_sample:], self.sr, blocking=False)
+
+        # Espera até o áudio terminar ou ser pausado
+        while self.is_playing and not self.is_paused and sd.get_stream() is not None and sd.get_stream().active:
+            time.sleep(0.1)
+
+        # Quando o áudio termina
+        if self.is_playing and not self.is_paused:
+            self.is_playing = False
+            self.current_time = 0.0
+        print("Reprodução concluída.")
 
     # ---------------------------
     # PLAYBACK CONTROLS
     # ---------------------------
 
-    def play(self, file_path):
+    def play(self, file_path=None):
         """Inicia a reprodução do áudio."""
-        self._librosa_load(file_path)
-        if not os.path.exists(file_path) or (self.y is None or self.sr is None):
-            print("Erro ao carregar arquivo.")
+        if file_path:
+            self._librosa_load(file_path)
+
+        if self.y is None or self.sr is None:
+            print("Nenhum áudio carregado.")
             return
-        self.is_playing = True
-        sd.play(self.y, self.sr, blocking=False) # Blocking permite reprodução assíncrona
+
+        if self.is_paused:
+            print("Retomando reprodução...")
+            self.is_paused = False
+        else:
+            print("Iniciando reprodução...")
+            self.is_playing = True
+            self.is_paused = False
+
+        self.thread = threading.Thread(target=self._playback_loop, daemon=True)
+        self.thread.start()
 
     def pause(self):
         """Pausa a reprodução do áudio."""
-        if self.is_playing:
-            self.is_playing = False
-            sd.stop()
-        else:
-            print("O áudio já está pausado.")
+        if not self.is_playing:
+            print("Nada está sendo reproduzido.")
+            return
 
-    # def seek(self, time_position):
-    #     """Busca para uma posição específica no áudio."""
-    #     if 0 <= time_position <= self.duration:
-    #         self.current_time = time_position
-    #         print(f"Buscando para: {time_position} segundos.")
-    #     else:
-    #         print("Posição inválida.")
+        if self.is_paused:
+            print("O áudio já está pausado.")
+            return
+
+        self.is_paused = True
+        sd.stop()
+
+        # Computa o tempo atual
+        elapsed = time.time() - self.play_start_time
+        self.current_time += elapsed
+        print(f"Áudio pausado em {self.current_time:.2f} segundos.")
+
+    def seek(self, time_position=0):
+        """Seleciona uma posição específica no áudio e toca a partir."""
+        if self.y is None or self.sr is None:
+            print("Nenhum áudio carregado.")
+            return
+        if time_position < 0 or time_position > self.duration:
+            print("Posição inválida.")
+            return
+        self.current_time = time_position
+        sd.stop()
+        self.is_playing = False
+        self.is_paused = False
 
     # ---------------------------
     # AUDIO FILE MANAGEMENT
