@@ -325,16 +325,30 @@ class MainController(BoxLayout):
             figure_widget.touch_mode = mode
             
         # Atualiza o estilo dos botões
-        if self.touch_mode == 'cursor':
+        if self.canvas_controller.touch_mode == 'cursor':
             self.ids.mode_cursor.text_color = (0.118, 0.314, 0.784, 1)
             self.ids.mode_pan.text_color = (1, 1, 1, 1)
-        elif self.touch_mode == 'pan':
+        elif self.canvas_controller.touch_mode == 'pan':
             self.ids.mode_pan.text_color = (0.118, 0.314, 0.784, 1)
             self.ids.mode_cursor.text_color = (1, 1, 1, 1)
 
     # ---------------------------
     # MEDIA BUTTONS
     # ---------------------------
+
+    def on_previous_button_pressed(self):
+        """Chamado quando o usuário clica em 'previous'"""
+        try:
+            if not self.audio_selected:
+                print("Nenhum áudio selecionado.")
+                return
+            if self.audio_files:
+                current_index = self.audio_files.index(self.audio_selected)
+                previous_index = (current_index - 1) % len(self.audio_files) # usando modulo para comportamento circular
+                self.on_audio_select(self.audio_files[previous_index])
+        except Exception as e:
+            print(f"Erro ao reproduzir áudio: {e}")
+            return
 
     def on_play_button_pressed(self):
         """Chamado quando o usuário clica em 'play'"""
@@ -353,14 +367,20 @@ class MainController(BoxLayout):
             print(f"Erro ao reproduzir áudio: {e}")
             self.ids.play_btn.icon = "play"
             return
-        
-    def on_previous_button_pressed(self):
-        """Chamado quando o usuário clica em 'previous'"""
-        print("Previous button pressed - implementar")
     
     def on_next_button_pressed(self):
         """Chamado quando o usuário clica em 'next'"""
-        print("Next button pressed - implementar")
+        try:
+            if not self.audio_selected:
+                print("Nenhum áudio selecionado.")
+                return
+            if self.audio_files:
+                current_index = self.audio_files.index(self.audio_selected)
+                next_index = (current_index + 1) % len(self.audio_files) # usando modulo para comportamento circular
+                self.on_audio_select(self.audio_files[next_index])
+        except Exception as e:
+            print(f"Erro ao reproduzir áudio: {e}")
+            return
 
     # ---------------------------
     # DIRECTORY SELECTOR
