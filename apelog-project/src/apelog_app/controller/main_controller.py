@@ -1,12 +1,164 @@
-from kivy.uix.boxlayout import BoxLayout
+from kivy.metrics import dp
+from kivy.clock import Clock
+
 from kivy.properties import ListProperty
-from kivymd.uix.menu import MDDropdownMenu
 from kivy_matplotlib_widget.uix.graph_widget import MatplotFigure
+from kivy.uix.boxlayout import BoxLayout
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.menu import MDDropdownMenu
+from kivymd.uix.datatables import MDDataTable
+from kivymd.uix.dialog import MDDialog
+from kivymd.uix.textfield import MDTextField
+from kivymd.uix.button import MDFlatButton
 
 import numpy as np
+import os
 
 import apelog_app.model.data as model
 from apelog_app.view.file_chooser import browse_files
+
+# TODO: exportar csv, implementar o algoritmo, clicar no audio antes de dar play nao atualiza a posição do audio,
+
+class TableController:
+    """Controlador da tabela de eventos."""
+    def __init__(self, main_controller):
+        self.main_controller = main_controller
+        self.dialog = None
+        self.data_tables = None
+        self.events = []
+        self.selected_row_index = None
+
+    def create_table(self):
+        """Cria ou atualiza a tabela de eventos na view."""
+        self.data_tables = MDDataTable(
+            size_hint=(0.8, 0.8),
+            use_pagination=True,
+            check=True,
+            column_data=[
+                ("No.", dp(20)),
+                ("Timestamp", dp(30)),
+                ("Title", dp(50)),
+                ("Description", dp(60)),
+                ("Audio name", dp(50)),
+            ],
+        )
+
+        self.data_tables.row_data = self.events
+
+        # Vincula evento de clique na linha
+        self.data_tables.bind(on_row_press=self.on_row_press)
+
+        container = self.main_controller.ids.events_table_container
+        container.clear_widgets()
+        container.add_widget(self.data_tables)
+        print('Tabela de eventos criada.')
+
+    def update_events(self, events, audio_name="audio.mp3"):
+        """Atualiza os eventos na tabela."""
+        ts = events[-1]
+        title = f"Event at {ts:.3f}s"
+        desc = "Marked manually"
+        name = os.path.basename(audio_name)
+        self.events.append((f"{ts:.3f}s", title, desc, name))
+            
+        print(f'Atualizando eventos: {self.events}')
+
+    def update_table(self):
+        """Atualiza visualmente a tabela com os eventos atuais."""
+        if self.data_tables:
+            self.data_tables.row_data = [
+                (i+1, t[0], t[1], t[2], t[3])
+                for i, t in enumerate(self.events)
+            ]
+            print('Eventos na tabela atualizados.')
+
+    def add_row(self):
+        """Adiciona uma nova linha à tabela."""
+        self.data_tables.add_row((len(self.events),
+                                  self.events[-1][0],
+                                  self.events[-1][1],
+                                  self.events[-1][2],
+                                  self.events[-1][3]))
+        print(f'Linha adicionada: {self.events[-1]}')
+
+    def remove_selected(self):
+        """Remove os eventos selecionados na tabela."""
+        if not self.data_tables:
+            return
+        selected_rows = self.data_tables.get_row_checks()
+        if not selected_rows:
+            print("Nenhum evento selecionado para remoção.")
+            return
+        
+        selected_ts = [int(row[0]) - 1 for row in selected_rows]
+        print(f"Removendo eventos nos índices: {selected_ts}")
+
+        for i in sorted(selected_ts, reverse=True):
+            del self.events[i]
+
+        return selected_ts
+
+    def on_row_press(self, instance_table, instance_row):
+        """Chamado ao clicar numa linha da tabela."""
+        try:
+            num_cols = len(self.data_tables.column_data)
+            cell_index = instance_row.index
+            row_index = cell_index // num_cols  # converte para índice de linha real
+
+            print(f"Linha clicada: {row_index} (coluna {cell_index % num_cols})")
+            self.selected_row_index = row_index
+
+            if cell_index % num_cols != 0:
+                row_data = self.data_tables.row_data[row_index]
+                self.open_edit_dialog(row_data)
+
+        except Exception as e:
+            print(f"Erro ao abrir diálogo de edição: {e}")
+            return
+
+    def open_edit_dialog(self, row_data):
+        """Abre o diálogo de edição da linha."""
+        no, timestamp, title, desc = row_data
+
+        self.dialog = MDDialog(
+            title=f"Editar evento #{no}",
+            type="custom",
+            content_cls=self._create_dialog_content(title, desc),
+            buttons=[
+                MDFlatButton(text="Cancelar", on_release=lambda *x: self.dialog.dismiss()),
+                MDFlatButton(text="Salvar", on_release=self.save_edit),
+            ],
+        )
+        self.dialog.open()
+
+    def save_edit(self, *args):
+        """Salva a edição da linha e atualiza a tabela."""
+        new_title = self.title_field.text
+        new_desc = self.desc_field.text
+
+        index = self.selected_row_index
+        no, timestamp, _, _ = self.data_tables.row_data[index]
+        self.data_tables.row_data[index] = (no, timestamp, new_title, new_desc)
+        self.events[index] = (no, timestamp, new_title, new_desc)
+
+        # Atualiza visualmente a tabela
+        self.data_tables.update_row_data(
+            self.data_tables,
+            self.data_tables.row_data
+        )
+
+        print(f"Linha {no} atualizada: {new_title}, {new_desc}")
+
+        self.dialog.dismiss()
+
+    def _create_dialog_content(self, title, desc):
+        """Cria o conteúdo do diálogo."""
+        layout = MDBoxLayout(orientation="vertical", spacing=10, adaptive_height=True)
+        self.title_field = MDTextField(text=title, hint_text="Título")
+        self.desc_field = MDTextField(text=desc, hint_text="Descrição")
+        layout.add_widget(self.title_field)
+        layout.add_widget(self.desc_field)
+        return layout
 
 class CanvasController():
     """Controlador do canvas de desenho."""
@@ -15,8 +167,9 @@ class CanvasController():
         self.audio_controller = main_controller.audio_controller
         
         self.audio_selected = main_controller.audio_selected
-        self.touch_mode = 'cursor'  # 'pan' ou 'cursor'
+        self.touch_mode = 'cursor'
         self.selected_audio_x_pos = 0.0
+        self.markers_pos = []  # lista de marcadores criados
         self.figure_widget = None  # guardará a referência para o gráfico atual
 
     def draw_waveform(self):
@@ -75,7 +228,7 @@ class CanvasController():
             va='bottom',
             fontsize=9,
             color='white',
-            bbox=dict(boxstyle='round,pad=0.3', fc='#ca8c18', ec='white', alpha=0.9)
+            bbox=dict(boxstyle='round,pad=0.3', fc='#ca8c18', ec='white', alpha=0.95)
         )
 
         # --- FUNÇÃO AUXILIAR PARA MOVER A BARRA ---
@@ -160,6 +313,45 @@ class CanvasController():
             self.figure_widget.figure.canvas.draw()
         self.figure_widget._draw_bitmap()
 
+    def create_marker(self, time_position: float):
+        """Cria um marcador visual no gráfico"""
+        print(f"Criando marcador em {time_position:.3f} s")
+        if not self.figure_widget or not self.figure_widget.waveform_data:
+            return
+        ax = self.figure_widget.figure.axes[0]
+        ax.axvline(
+            x=time_position,
+            color="#5ff033",
+            linewidth=1.5,
+            linestyle='--',
+            zorder=9
+        )
+        self.markers_pos.append(time_position) if time_position not in self.markers_pos else None
+        self.figure_widget.figure.canvas.draw_idle()
+
+        print(f"Marcadores atuais: {self.markers_pos}")
+        
+        self.main_controller.table_controller.update_events(self.markers_pos, self.audio_selected)
+        self.main_controller.table_controller.add_row()
+
+    def delete_marker(self):
+        """Remove um marcador visual do gráfico"""
+        if not self.figure_widget or not self.figure_widget.waveform_data:
+            return
+        markers_id = self.main_controller.table_controller.remove_selected()
+        ax = self.figure_widget.figure.axes[0]
+        for marker_time in sorted([self.markers_pos[i] for i in markers_id], reverse=True):
+            print(f"Removendo marcador em {marker_time:.3f} s")
+            # Remove a linha do marcador
+            for line in ax.get_lines():
+                if line.get_xdata()[0] == marker_time and line.get_linestyle() == '--':
+                    line.remove()
+                    break
+            # Remove da lista de marcadores
+            self.markers_pos.remove(marker_time)
+        self.figure_widget.figure.canvas.draw_idle()
+        self.main_controller.table_controller.update_table()
+        
 class MainController(BoxLayout):
     """Controlador principal que faz a ponte entre Model e View."""
     audio_files = ListProperty([])
@@ -177,6 +369,7 @@ class MainController(BoxLayout):
 
         self.audio_controller = model.AudioFilesModel()
         self.canvas_controller = CanvasController(self)
+        self.table_controller = TableController(self)
 
         self.bind(audio_files=self.update_audio_list)
 
@@ -186,7 +379,8 @@ class MainController(BoxLayout):
 
     def on_kv_post(self, base_widget):
         """Chamado após o carregamento do .kv"""
-        self.update_audio_list()
+        Clock.schedule_once(lambda dt: self.update_audio_list())
+        Clock.schedule_once(lambda dt: self.update_events_table())
 
     # ---------------------------
     # MENU METHODS
@@ -314,24 +508,6 @@ class MainController(BoxLayout):
 
         self.canvas_controller.draw_waveform()
 
-    def change_touch_mode(self, mode):
-        """Muda o modo de interação do gráfico"""
-        print(f"Changing touch mode to: {mode}")
-        self.canvas_controller.touch_mode = mode
-        
-        container = self.ids.waveform_container
-        if container.children:
-            figure_widget = container.children[0]
-            figure_widget.touch_mode = mode
-            
-        # Atualiza o estilo dos botões
-        if self.canvas_controller.touch_mode == 'cursor':
-            self.ids.mode_cursor.text_color = (0.118, 0.314, 0.784, 1)
-            self.ids.mode_pan.text_color = (1, 1, 1, 1)
-        elif self.canvas_controller.touch_mode == 'pan':
-            self.ids.mode_pan.text_color = (0.118, 0.314, 0.784, 1)
-            self.ids.mode_cursor.text_color = (1, 1, 1, 1)
-
     # ---------------------------
     # MEDIA BUTTONS
     # ---------------------------
@@ -343,6 +519,10 @@ class MainController(BoxLayout):
                 print("Nenhum áudio selecionado.")
                 return
             if self.audio_files:
+                if self.audio_controller.is_playing:
+                    self.audio_controller.pause()
+                    self.audio_controller.current_time = 0.0
+                    self.ids.play_btn.icon = "play"
                 current_index = self.audio_files.index(self.audio_selected)
                 previous_index = (current_index - 1) % len(self.audio_files) # usando modulo para comportamento circular
                 self.on_audio_select(self.audio_files[previous_index])
@@ -375,11 +555,37 @@ class MainController(BoxLayout):
                 print("Nenhum áudio selecionado.")
                 return
             if self.audio_files:
+                if self.audio_controller.is_playing:
+                    self.audio_controller.pause()
+                    self.audio_controller.current_time = 0.0
+                    self.ids.play_btn.icon = "play"
                 current_index = self.audio_files.index(self.audio_selected)
                 next_index = (current_index + 1) % len(self.audio_files) # usando modulo para comportamento circular
                 self.on_audio_select(self.audio_files[next_index])
         except Exception as e:
             print(f"Erro ao reproduzir áudio: {e}")
+            return
+
+    def on_plus_button_pressed(self):
+        """Chamado quando o usuário clica em 'plus' para adicionar marcadores"""
+        try:
+            if not self.audio_selected:
+                print("Nenhum áudio selecionado.")
+                return
+            self.canvas_controller.create_marker(self.canvas_controller.selected_audio_x_pos)
+        except Exception as e:
+            print(f"Erro ao criar marcador: {e}")
+            return
+        
+    def on_minus_button_pressed(self):
+        """Chamado quando o usuário clica em 'minus' para remover marcadores"""
+        try:
+            if not self.audio_selected:
+                print("Nenhum áudio selecionado.")
+                return
+            self.canvas_controller.delete_marker()
+        except Exception as e:
+            print(f"Erro ao remover marcador: {e}")
             return
 
     # ---------------------------
@@ -404,3 +610,7 @@ class MainController(BoxLayout):
         rv = self.ids.get("audio_list_view")
         if rv:
             rv.data = [{"text": f} for f in self.audio_files]
+
+    def update_events_table(self, events=[]):
+        """Atualiza a tabela de eventos na view"""
+        self.table_controller.create_table()

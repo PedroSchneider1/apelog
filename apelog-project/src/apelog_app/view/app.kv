@@ -126,20 +126,6 @@
                 spacing: "10dp"
                 padding: [0, 5, 0, 5]
 
-                MDIconButton:
-                    id: mode_pan
-                    icon: "cursor-move"
-                    theme_text_color: "Custom"
-                    text_color: 1, 1, 1, 1
-                    on_release: root.change_touch_mode('pan')
-
-                MDIconButton:
-                    id: mode_cursor
-                    icon: "cursor-text"
-                    theme_text_color: "Custom"
-                    text_color: 0.118, 0.314, 0.784, 1
-                    on_release: root.change_touch_mode('cursor')
-
             RelativeLayout:
                 id: waveform_container
                 size_hint_y: 0.5
@@ -148,21 +134,8 @@
                 FloatLayout:
                     id: marker_layer
 
-            Label:
-                text: "Eventos"
-                size_hint_y: None
-                height: "30dp"
-
-            GridLayout:
-                cols: 3
-                size_hint_y: 0.5
-
-                Label:
-                    text: "Time"
-                Label:
-                    text: "Title"
-                Label:
-                    text: "Description"
+            AnchorLayout:
+                id: events_table_container
 
     # BARRA INFERIOR
     MDBoxLayout:
@@ -198,6 +171,16 @@
                 theme_text_color: "Custom"
                 text_color: 1, 1, 1, 1
                 on_release: root.on_next_button_pressed()
+            MDIconButton:
+                icon: "plus"
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+                on_release: root.on_plus_button_pressed()
+            MDIconButton:
+                icon: "minus-circle"
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+                on_release: root.on_minus_button_pressed()
 
         Widget:  # espaço à direita
             size_hint_x: 0.3

@@ -17,8 +17,8 @@ import matplotlib.pyplot as plt
 from kivy.utils import platform
 from kivy.config import Config
 
-#avoid conflict between mouse provider and touch (very important with touch device)
-#no need for android platform
+# avoid conflict between mouse provider and touch (very important with touch device)
+# no need for android platform
 if platform != 'android':
     Config.set('input', 'mouse', 'mouse,disable_on_activity')
 else:
@@ -137,8 +137,7 @@ class AudioFilesModel(MediaModel):
 
     def seek(self, time_position=0):
         """Seleciona uma posição específica no áudio e toca a partir."""
-        if self.y is None or self.sr is None:
-            print("Nenhum áudio carregado.")
+        if self.y is None or self.sr is None: # verifica se áudio está carregado
             return
         if time_position < 0 or time_position > self.duration:
             print("Posição inválida.")

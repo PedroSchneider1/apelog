@@ -1,5 +1,9 @@
+from kivy.core.window import Window
+Window.maximize()
+
 from kivymd.app import MDApp
 from kivy.lang import Builder
+
 from pathlib import Path
 import setproctitle
 
