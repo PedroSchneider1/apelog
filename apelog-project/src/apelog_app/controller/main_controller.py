@@ -17,7 +17,7 @@ import os
 import apelog_app.model.data as model
 from apelog_app.view.file_chooser import browse_files
 
-# TODO: exportar csv, implementar o algoritmo, clicar no audio antes de dar play nao atualiza a posição do audio,
+# TODO: consertar bugs ao remover marcador, exportar csv
 
 class TableController:
     """Controlador da tabela de eventos."""
@@ -174,6 +174,11 @@ class CanvasController():
 
     def draw_waveform(self):
         """Desenha a waveform do áudio selecionado"""
+        # {file_path: [(time, amplitude), ...]}
+        for m in self.main_controller.audio_controller.markers.get(self.audio_selected, []):
+            self.main_controller.table_controller.update_events([m[0]], self.audio_selected)
+        self.main_controller.table_controller.update_table()
+
         # Gera a figura do waveform
         fig = self.audio_controller.generate_waveform(self.audio_selected)
 
@@ -391,13 +396,11 @@ class MainController(BoxLayout):
         menu_items = [
             {
                 "viewclass": "OneLineIconListItem",
-                "icon": "upload",
                 "text": "Upload Audio",
                 "on_release": lambda x="upload": self.on_menu_item_selected(x),
             },
             {
                 "viewclass": "OneLineIconListItem", 
-                "icon": "download",
                 "text": "Download Audio",
                 "on_release": lambda x="download": self.on_menu_item_selected(x),
             },
@@ -409,25 +412,14 @@ class MainController(BoxLayout):
             width_mult=4,
         )
         self.file_menu.open()
-
-    def on_download_button_pressed(self):
-        """Chamado quando o usuário clica em 'download'"""
-        print("Download functionality - implementar")
     
     def open_tools_menu(self):
         """Abre o menu Tools"""
         menu_items = [
             {
                 "viewclass": "OneLineIconListItem",
-                "icon": "chart-bar",
-                "text": "Audio Analysis",
+                "text": "Auto Marker",
                 "on_release": lambda x="analysis": self.on_menu_item_selected(x),
-            },
-            {
-                "viewclass": "OneLineIconListItem",
-                "icon": "playlist-check", 
-                "text": "Batch Processing",
-                "on_release": lambda x="batch": self.on_menu_item_selected(x),
             },
         ]
         
@@ -443,13 +435,11 @@ class MainController(BoxLayout):
         menu_items = [
             {
                 "viewclass": "OneLineIconListItem",
-                "icon": "help-circle",
                 "text": "Documentation", 
                 "on_release": lambda x="docs": self.on_menu_item_selected(x),
             },
             {
                 "viewclass": "OneLineIconListItem",
-                "icon": "information",
                 "text": "About",
                 "on_release": lambda x="about": self.on_menu_item_selected(x),
             },
@@ -476,11 +466,34 @@ class MainController(BoxLayout):
         if action == "upload":
             self.open_directory_selector()
         elif action == "download":
-            self.on_download_button_pressed()
+            print("Download audio")
         elif action == "analysis":
-            print("Audio analysis functionality")
-        elif action == "batch":
-            print("Batch processing functionality")
+            if self.audio_controller.audio_analysis:
+                self.audio_controller.audio_analysis = False
+                self.dialog = MDDialog(
+                    title="Análise Automática Desativada",
+                    text="Análise automática do áudio foi desativada.\nMarcadores automáticos não serão mais gerados.",
+                    buttons=[
+                        MDFlatButton(
+                            text="OK",
+                            on_release=lambda x: self.dialog.dismiss()
+                        )
+                    ],
+                )
+                self.dialog.open()
+            else:
+                self.audio_controller.audio_analysis = True
+                self.dialog = MDDialog(
+                    title="Análise Automática Ativada",
+                    text="Análise automática do áudio foi ativada.\nMarcadores automáticos serão gerados ao carregar novos áudios.",
+                    buttons=[
+                        MDFlatButton(
+                            text="OK",
+                            on_release=lambda x: self.dialog.dismiss()
+                        )
+                    ],
+                )
+                self.dialog.open()
         elif action == "docs":
             print("Open documentation")
         elif action == "about":

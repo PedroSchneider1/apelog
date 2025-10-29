@@ -51,17 +51,97 @@ class MediaModel:
     def __init__(self):
         self.y = None
         self.sr = None
+        self.ts = None
         self.duration = 0.0
 
     def _librosa_load(self, file_path):
         """Carrega o arquivo de áudio usando librosa."""
         try:
             self.y, self.sr = librosa.load(file_path, sr=None)
+            self.ts = np.arange(len(self.y)) / self.sr
             self.duration = librosa.get_duration(y=self.y, sr=self.sr)
             return True
         except Exception as e:
             print(f"Erro ao carregar áudio: {e}")
             return False
+
+    def segment(self, start, duration):
+        """Retorna um trecho do áudio em um intervalo de tempo específico."""
+        start_sample = int(start * self.sr)
+        end_sample = int((start + duration) * self.sr)
+        end_sample = min(end_sample, len(self.y))
+        
+        seg = type("Segment", (), {})()  # objeto dinâmico simples
+        seg.ys = self.y[start_sample:end_sample]
+        seg.ts = np.arange(len(seg.ys)) / self.sr + start
+        seg.framerate = self.sr
+        seg.duration = len(seg.ys) / self.sr
+        return seg
+
+    def _estimate_fundamental_freq(self, peaks_points):
+        """Estima a frequência fundamental usando autocorrelação em segmentos ao redor dos picos locais."""
+        frequencies = []
+        for peak in peaks_points:
+            # Extract a segment around the peak (0.2s before and 0.2s after)
+            start = max(0, peak[0] - 0.2)
+            duration = 0.4
+            if start + duration > self.duration:
+                duration = self.duration - start
+
+            segment = self.segment(start=start, duration=duration)
+            if len(segment.ys) < 300:  # muito curto
+                frequencies.append(0)
+                continue
+
+            # Compute autocorrelation
+            corrs = np.correlate(segment.ys, segment.ys, mode='full')
+            corrs = corrs[len(corrs)//2:]
+            corrs /= np.max(np.abs(corrs))
+
+            # Find first local maximum in a reasonable lag range
+            lag = np.argmax(corrs[150:250]) + 150
+            period = lag / segment.framerate
+            frequency = 1 / period if period > 0 else 0
+            frequencies.append(frequency)
+
+        return frequencies
+
+    def _auto_generate_markers(self, interval=5.0):
+        """Gera marcadores automáticos a partir de intervalos de tempo fixos."""
+        total_duration = self.duration
+        num_slices = max(1, int(total_duration / interval))
+        
+        local_maxima_points = []
+
+        # Thresholds
+        std_dev = np.std(self.y)
+        noise_factor = 15
+        freq_threshold = 90
+        amp_threshold = 0.05 + (std_dev * noise_factor)
+
+        # Process each slice
+        for i in range(num_slices):
+            start_time = i * interval
+            duration = min(interval, total_duration - start_time)
+            segment = self.segment(start=start_time, duration=duration)
+
+            # Find local max
+            if len(segment.ys) == 0:
+                continue
+
+            result = np.argmax(segment.ys)
+            if segment.ys[result] > amp_threshold:
+                local_maxima_points.append((segment.ts[result], segment.ys[result]))
+
+        # Filter by fundamental frequency
+        frequencies = self._estimate_fundamental_freq(local_maxima_points)
+        filtered_points = [
+            point for i, point in enumerate(local_maxima_points)
+            if frequencies[i] >= freq_threshold
+        ]
+
+        return filtered_points
+        
 
 class AudioFilesModel(MediaModel):
     def __init__(self):
@@ -75,6 +155,8 @@ class AudioFilesModel(MediaModel):
         self.audio_extensions = (".mp3", ".wav", ".flac", ".ogg")
         self.fig = None
         self.ax = None
+        self.markers = {}  # {file_path: [(time, amplitude), ...]}
+        self.audio_analysis = False # Habilita/desabilita análise automática de marcadores
 
     def _playback_loop(self):
         """Thread interna para reprodução assíncrona."""
@@ -190,17 +272,19 @@ class AudioFilesModel(MediaModel):
         return self.fig
 
     def generate_waveform(self, file_path):
-        """Gera e retorna apenas a figura Matplotlib."""
+        """Gera e retorna a figura Matplotlib com marcadores automáticos."""
         if self.fig is None or self.ax is None:
             self.init_waveform_fig()
 
         try:
-            y, sr = librosa.load(file_path, sr=None)
-            
-            # OTIMIZAÇÃO: Downsample para muitas amostras
+            # Carrega o áudio completo para análise
+            self._librosa_load(file_path)
+
+            # Reduz resolução só para exibir mais rápido
+            y = self.y
+            sr = self.sr
             MAX_POINTS = len(y) if len(y) < 100000 else 100000
             if len(y) > MAX_POINTS:
-                # Downsample usando média móvel simples
                 downsample_factor = len(y) // MAX_POINTS
                 y = y[::downsample_factor]
                 sr_effective = sr / downsample_factor
@@ -208,26 +292,48 @@ class AudioFilesModel(MediaModel):
                 sr_effective = sr
             
             t = np.arange(len(y)) / sr_effective
-            
+
+            # Limpa e desenha waveform
             self.ax.clear()
-            
-            # Fundo e linhas horizontais (estilo Audacity)
             self.ax.set_facecolor('#111')
+
             for yline in [-1, -0.5, 0, 0.5, 1]:
                 self.ax.axhline(y=yline, color='#333', linestyle='-', linewidth=0.8, alpha=0.5)
             
-            # OTIMIZAÇÃO: Usar rasterized para grandes datasets
             self.ax.plot(t, y, color="#ca8c18", linewidth=0.8, antialiased=True, rasterized=True)
-            
+
             self.ax.set_xlim(0, t[-1])
             self.ax.set_ylim(-1, 1)
             self.ax.set_title(os.path.basename(file_path), color='white', fontsize=10, pad=6)
             self.ax.tick_params(axis='x', colors='gray', labelsize=8)
             self.ax.tick_params(axis='y', colors='gray', labelsize=8)
             self.fig.tight_layout(pad=0.5)
-            
+
+            if self.audio_analysis:
+                # Armazena e reutiliza marcadores
+                if file_path not in self.markers:
+                    markers = self._auto_generate_markers(interval=5.0)
+                    self.markers[file_path] = markers  # guarda no dicionário
+                    print(f"{len(markers)} marcadores detectados e armazenados.")
+                else:
+                    markers = self.markers[file_path]
+                    print(f"Marcadores já existentes para {os.path.basename(file_path)} ({len(markers)}).")
+
+                # Desenha marcadores na waveform
+                for (time, amp) in markers:
+                    self.ax.axvline(
+                        x=time, color="#34f1ff", linestyle='--', linewidth=1.2, alpha=0.8
+                    )
+
             return self.fig
-            
+
         except Exception as e:
             print(f"Erro ao gerar waveform: {e}")
             return None
+
+    def clear_markers(self, file_path=None):
+        """Remove marcadores de um arquivo específico ou de todos."""
+        if file_path:
+            self.markers.pop(file_path, None)
+        else:
+            self.markers.clear()
