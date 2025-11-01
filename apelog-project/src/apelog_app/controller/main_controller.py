@@ -16,8 +16,9 @@ import os
 
 import apelog_app.model.data as model
 from apelog_app.view.file_chooser import browse_files
+from tkinter import Tk, Listbox, Toplevel, Button
 
-# TODO: consertar bugs ao remover marcador, exportar csv
+# TODO: consertar bugs ao remover, exportar csv
 
 class TableController:
     """Controlador da tabela de eventos."""
@@ -33,7 +34,7 @@ class TableController:
         self.data_tables = MDDataTable(
             size_hint=(0.8, 0.8),
             use_pagination=True,
-            check=True,
+            check=False,
             column_data=[
                 ("No.", dp(20)),
                 ("Timestamp", dp(30)),
@@ -82,21 +83,51 @@ class TableController:
         print(f'Linha adicionada: {self.events[-1]}')
 
     def remove_selected(self):
-        """Remove os eventos selecionados na tabela."""
+        """Remove os eventos selecionados na tabela e retorna os índices dos selecionados."""
         if not self.data_tables:
-            return
-        selected_rows = self.data_tables.get_row_checks()
-        if not selected_rows:
-            print("Nenhum evento selecionado para remoção.")
-            return
-        
-        selected_ts = [int(row[0]) - 1 for row in selected_rows]
-        print(f"Removendo eventos nos índices: {selected_ts}")
+            return []
 
-        for i in sorted(selected_ts, reverse=True):
+        # Cria a janela principal do Tkinter
+        root = Tk()
+        root.withdraw()  # Oculta a janela principal
+
+        # Cria um diálogo de nível superior
+        dialog = Toplevel(root)
+        dialog.title("Lista de Eventos")
+
+        # Cria uma Listbox para exibir os índices e timestamps (multiselecionável)
+        listbox = Listbox(dialog, width=50, height=20, selectmode="multiple")
+        for i, row in enumerate(self.data_tables.row_data):
+            listbox.insert("end", f"({i+1:02}) - Title: {row[2]} | Timestamp: {row[1]}")
+        listbox.pack(padx=10, pady=10)
+
+        selected_indices = []
+
+        # Função para capturar os índices selecionados e fechar o diálogo
+        def on_remove():
+            nonlocal selected_indices
+            selected_indices = [int(idx) for idx in listbox.curselection()]
+            root.destroy()
+
+        # Botão para remover os eventos selecionados
+        remove_button = Button(dialog, text="Remover Selecionados", command=on_remove)
+        remove_button.pack(pady=5)
+
+        # Botão para fechar o diálogo sem remover
+        close_button = Button(dialog, text="Fechar", command=lambda: root.destroy())
+        close_button.pack(pady=5)
+
+        # Configura o evento de fechamento da janela nativa
+        dialog.protocol("WM_DELETE_WINDOW", lambda: root.destroy())
+
+        # Mantém o diálogo aberto
+        root.mainloop()
+
+        # Remove os eventos selecionados da tabela e da lista de eventos
+        for i in sorted(selected_indices, reverse=True):
             del self.events[i]
 
-        return selected_ts
+        return selected_indices
 
     def on_row_press(self, instance_table, instance_row):
         """Chamado ao clicar numa linha da tabela."""
@@ -118,7 +149,7 @@ class TableController:
 
     def open_edit_dialog(self, row_data):
         """Abre o diálogo de edição da linha."""
-        no, timestamp, title, desc = row_data
+        no, timestamp, title, desc, file = row_data
 
         self.dialog = MDDialog(
             title=f"Editar evento #{no}",
@@ -137,9 +168,9 @@ class TableController:
         new_desc = self.desc_field.text
 
         index = self.selected_row_index
-        no, timestamp, _, _ = self.data_tables.row_data[index]
-        self.data_tables.row_data[index] = (no, timestamp, new_title, new_desc)
-        self.events[index] = (no, timestamp, new_title, new_desc)
+        no, timestamp, _, _, file = self.data_tables.row_data[index]
+        self.data_tables.row_data[index] = (no, timestamp, new_title, new_desc, file)
+        self.events[index] = (no, timestamp, new_title, new_desc, file)
 
         # Atualiza visualmente a tabela
         self.data_tables.update_row_data(

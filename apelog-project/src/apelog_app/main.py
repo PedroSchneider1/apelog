@@ -21,7 +21,7 @@ class MyApp(MDApp):
         self.theme_cls.theme_style = "Dark"
         self.theme_cls.primary_palette = "BlueGray"
         Builder.load_file(str(kv_path))
-        return MainController()  # Controller faz ponte entre model e view
+        return MainController()
 
 def main():
     MyApp().run()
