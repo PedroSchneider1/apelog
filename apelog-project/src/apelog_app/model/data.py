@@ -7,7 +7,7 @@ import os
 import numpy as np
 import time
 import threading
-import librosa
+import soundfile as sf
 import sounddevice as sd
 
 import matplotlib
@@ -57,9 +57,9 @@ class MediaModel:
     def _librosa_load(self, file_path):
         """Carrega o arquivo de áudio usando librosa."""
         try:
-            self.y, self.sr = librosa.load(file_path, sr=None)
+            self.y, self.sr = sf.read(file_path)
             self.ts = np.arange(len(self.y)) / self.sr
-            self.duration = librosa.get_duration(y=self.y, sr=self.sr)
+            self.duration = len(self.y) / self.sr
             return True
         except Exception as e:
             print(f"Erro ao carregar áudio: {e}")
@@ -268,8 +268,6 @@ class AudioFilesModel(MediaModel):
             self.ax.autoscale(enable=False)
             self.ax.spines['top'].set_visible(False)
             self.ax.spines['right'].set_visible(False)
-
-        return self.fig
 
     def generate_waveform(self, file_path):
         """Gera e retorna a figura Matplotlib com marcadores automáticos."""
